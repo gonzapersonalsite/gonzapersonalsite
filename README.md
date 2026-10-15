@@ -4,6 +4,11 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1200&color=D4A373&center=true&vCenter=true&width=640&lines=Hi%2C+I'm+Gonzalo+%F0%9F%91%8B;Full+Stack+Developer;Hexagonal+backends+%C2%B7+Feature-Sliced+frontends;Web+%C2%B7+Desktop+%C2%B7+Mobile+%C2%B7+Games;SOLID+by+design%2C+not+by+slogan" alt="Hi, I'm Gonzalo. Full Stack Developer." />
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/goblin-dark.svg" />
+  <img src="assets/goblin.svg" alt="A pixel goblin pulls out a laptop, codes for a while, looks around and runs off" />
+</picture>
+
 <a href="https://mi-portafolio-gonzalo.vercel.app/"><img src="https://img.shields.io/badge/Portfolio-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Portfolio" /></a>
 <a href="https://www.linkedin.com/in/gonzalo-martinez-garcia-353507370"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
 <a href="https://gonzaloapps.es/"><img src="https://img.shields.io/badge/Gonzalo_Apps-D4A373?style=for-the-badge&logo=googleplay&logoColor=black" alt="Gonzalo Apps" /></a>
@@ -90,16 +95,3 @@ decisions:  documented         # ADRs, runbooks, diagrams
 ¿Hablamos? → [Portfolio](https://mi-portafolio-gonzalo.vercel.app/) · [LinkedIn](https://www.linkedin.com/in/gonzalo-martinez-garcia-353507370)
 
 </details>
-
----
-
-<div align="center">
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/goblin-dark.svg" />
-  <img src="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/goblin.svg" alt="A pixel goblin codes on a laptop while my contribution graph fills in" />
-</picture>
-
-<sub>My goblin ships the commits. I review them. 👾</sub>
-
-</div>
