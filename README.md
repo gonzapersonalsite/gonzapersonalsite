@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1200&color=D4A373&center=true&vCenter=true&width=640&lines=Hi%2C+I'm+Gonzalo+%F0%9F%91%8B;Full+Stack+Developer;Hexagonal+backends+%C2%B7+Feature-Sliced+frontends;From+bare-metal+Proxmox+to+React+PWAs;SOLID+by+design%2C+not+by+slogan" alt="Hi, I'm Gonzalo. Full Stack Developer." />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1200&color=D4A373&center=true&vCenter=true&width=640&lines=Hi%2C+I'm+Gonzalo+%F0%9F%91%8B;Full+Stack+Developer;Hexagonal+backends+%C2%B7+Feature-Sliced+frontends;Web+%C2%B7+Desktop+%C2%B7+Mobile+%C2%B7+Games;SOLID+by+design%2C+not+by+slogan" alt="Hi, I'm Gonzalo. Full Stack Developer." />
 
 <a href="https://mi-portafolio-gonzalo.vercel.app/"><img src="https://img.shields.io/badge/Portfolio-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Portfolio" /></a>
 <a href="https://www.linkedin.com/in/gonzalo-martinez-garcia-353507370"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
@@ -19,6 +19,9 @@ $ cat about.txt
 I build complete applications for the web, desktop and mobile, and the
 infrastructure they run on. Systems and networking background, so I like
 knowing what happens below the framework too.
+
+$ cat now.txt
+building a 2D sandbox game in Godot 🎮
 ```
 
 ## 🧭 How I build
@@ -39,40 +42,6 @@ dead_code:  0                  # every change removes what it replaces
 decisions:  documented         # ADRs, runbooks, diagrams
 ```
 
-## 🏗️ Featured build
-
-Designed, built and deployed **solo, from an empty server room**: a microservices platform for a field-services company.
-
-```mermaid
-flowchart LR
-    push(["git push"]) --> ci["Forgejo Actions<br/>test · build · publish"]
-    ci --> reg[("Private<br/>registry")]
-    reg -->|deploy| pve
-
-    subgraph pve["Proxmox VE"]
-        direction LR
-        subgraph dmz["DMZ VLAN"]
-            proxy["Nginx Proxy Manager"]
-        end
-        subgraph lan["Internal VLAN"]
-            pwa["React PWAs<br/>Feature-Sliced Design"]
-            iam["IAM<br/>JWT · RBAC · rate limiting"]
-            svc["Spring Boot services<br/>Hexagonal"]
-            mq{{"RabbitMQ<br/>Transactional Outbox"}}
-            db[("PostgreSQL 17<br/>DB per service")]
-        end
-    end
-
-    users(["Employees & admins"]) --> proxy --> pwa
-    pwa --> iam
-    pwa --> svc
-    svc --> mq
-    svc --> db
-    iam --> db
-```
-
-**5** microservices · **500+** automated tests · **7** granular RBAC permissions · CI/CD built from scratch
-
 ## 🚀 Projects
 
 | Project | What it is | Built with |
@@ -87,19 +56,19 @@ flowchart LR
 
 <p>
   <b>Frontend</b><br/>
-  <img src="https://skillicons.dev/icons?i=react,ts,js,vite,materialui,tailwind,vue,vitest" alt="React, TypeScript, JavaScript, Vite, Material UI, Tailwind CSS, Vue, Vitest" />
+  <img src="https://skillicons.dev/icons?i=react,angular,ts,js,html,css,vite,materialui,tailwind,bootstrap,vue,vitest" alt="React, Angular, TypeScript, JavaScript, HTML, CSS, Vite, Material UI, Tailwind CSS, Bootstrap, Vue, Vitest" />
 </p>
 <p>
   <b>Backend</b><br/>
-  <img src="https://skillicons.dev/icons?i=java,spring,hibernate,nodejs,rabbitmq,postgres,mongodb,sqlite" alt="Java, Spring Boot, Hibernate, Node.js, RabbitMQ, PostgreSQL, MongoDB, SQLite" />
+  <img src="https://skillicons.dev/icons?i=java,spring,hibernate,nodejs,postgres,mongodb,sqlite" alt="Java, Spring Boot, Hibernate, Node.js, PostgreSQL, MongoDB, SQLite" />
 </p>
 <p>
-  <b>Mobile & desktop</b><br/>
-  <img src="https://skillicons.dev/icons?i=flutter,dart,kotlin,cs,dotnet" alt="Flutter, Dart, Kotlin, C#, .NET" />
+  <b>Mobile, desktop & games</b><br/>
+  <img src="https://skillicons.dev/icons?i=flutter,dart,kotlin,cs,dotnet,godot" alt="Flutter, Dart, Kotlin, C#, .NET, Godot" />
 </p>
 <p>
   <b>Infra & tooling</b><br/>
-  <img src="https://skillicons.dev/icons?i=docker,nginx,linux,githubactions,git" alt="Docker, Nginx, Linux, GitHub Actions, Git" />
+  <img src="https://skillicons.dev/icons?i=docker,nginx,linux,bash,powershell,py,githubactions,git,cloudflare,vercel" alt="Docker, Nginx, Linux, Bash, PowerShell, Python, GitHub Actions, Git, Cloudflare, Vercel" />
   <br/>
   <img src="https://img.shields.io/badge/Proxmox_VE-E57000?style=flat-square&logo=proxmox&logoColor=white" alt="Proxmox VE" />
   <img src="https://img.shields.io/badge/Forgejo_Actions-FB923C?style=flat-square&logo=forgejo&logoColor=white" alt="Forgejo Actions" />
@@ -114,7 +83,7 @@ flowchart LR
 
 **Cómo construyo:** arquitectura hexagonal (el dominio en el centro, la E/S en los bordes), Feature-Sliced Design en el frontend, SOLID aplicado de forma verificable, DRY sobre conocimiento y no sobre líneas parecidas, tests como parte de la funcionalidad, cero código muerto y decisiones documentadas en ADRs.
 
-**Proyecto destacado:** diseñé, construí y desplegué yo solo, partiendo de cero, una plataforma de microservicios para una empresa de servicios técnicos: 5 microservicios con base de datos por servicio, IAM con JWT y RBAC, RabbitMQ con Transactional Outbox, portales PWA en React, más de 500 tests automatizados y CI/CD propio en Forgejo Actions sobre Proxmox VE.
+**Ahora mismo:** construyendo un juego sandbox 2D en Godot.
 
 **Proyectos:** Quotidia (planificador diario en Flutter), License Generator (licencias firmadas con RSA, .NET + Avalonia), NutriManager (gestión para nutricionistas), Kanban Board y Pokédex (React + TypeScript).
 
