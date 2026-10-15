@@ -96,10 +96,10 @@ decisions:  documented         # ADRs, runbooks, diagrams
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/github-snake-dark.svg" />
-  <img src="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/github-snake.svg" alt="Snake eating my contribution graph" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/agent-dark.svg" />
+  <img src="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/agent.svg" alt="A pixel robot types on a laptop while my contribution graph fills in" />
 </picture>
 
-<sub>No contributions were harmed in the making of this snake. 🐍</sub>
+<sub>My agent ships the commits. I review them. 🤖</sub>
 
 </div>
