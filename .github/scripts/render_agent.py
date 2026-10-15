@@ -311,8 +311,8 @@ def main() -> None:
         sys.exit("GITHUB_TOKEN is required")
     weeks = fetch_levels(login, token)
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "agent.svg").write_text(render(weeks, LIGHT), encoding="utf-8")
-    (output_dir / "agent-dark.svg").write_text(render(weeks, DARK), encoding="utf-8")
+    (output_dir / "goblin.svg").write_text(render(weeks, LIGHT), encoding="utf-8")
+    (output_dir / "goblin-dark.svg").write_text(render(weeks, DARK), encoding="utf-8")
 
 
 if __name__ == "__main__":
