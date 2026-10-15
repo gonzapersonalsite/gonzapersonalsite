@@ -96,8 +96,8 @@ decisions:  documented         # ADRs, runbooks, diagrams
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/agent-dark.svg?v=goblin" />
-  <img src="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/agent.svg?v=goblin" alt="A pixel goblin codes on a laptop while my contribution graph fills in" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/goblin-dark.svg" />
+  <img src="https://raw.githubusercontent.com/gonzapersonalsite/gonzapersonalsite/output/goblin.svg" alt="A pixel goblin codes on a laptop while my contribution graph fills in" />
 </picture>
 
 <sub>My goblin ships the commits. I review them. 👾</sub>
