@@ -1,10 +1,14 @@
 """Render the animated pixel goblin shown at the top of the profile README.
 
-Story (one loop): the goblin strolls in, pulls a laptop out, opens it and types,
-looks left and right, closes and stashes the laptop, then runs off.
+Story (one loop): the goblin strolls in, reaches behind its back and pulls out a
+laptop, sets it down, opens it and types with both hands, looks left and right,
+closes the laptop, stashes it behind its back again and runs off.
 
 Usage: python scripts/render_goblin.py assets
 Writes goblin.svg (light) and goblin-dark.svg (dark) into the given directory.
+
+All sprite coordinates are in sprite pixels (U screen pixels each), relative to
+the goblin's top-left corner.
 """
 
 from __future__ import annotations
@@ -13,11 +17,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-U = 3  # sprite pixel size (px)
+U = 3  # screen pixels per sprite pixel
 DURATION = 16  # seconds per loop
 WIDTH = 560
-GROUND = 15  # sprite row the feet stand on (in sprite pixels, from the top of the canvas)
-HEIGHT = (GROUND + 2) * U
+TOP_MARGIN = 5  # sprite pixels above the goblin, room for the floating code glyphs
+SPRITE_ROWS = 13
+HEIGHT = (TOP_MARGIN + SPRITE_ROWS + 2) * U
 
 EASE_OUT = "0 0 0.58 1"
 EASE_IN = "0.42 0 1 1"
@@ -25,15 +30,20 @@ EASE_IN_OUT = "0.42 0 0.58 1"
 LINEAR = "0 0 1 1"
 
 # Timeline (fractions of DURATION)
-WALK_END = 0.22
-SLIDE_OUT = (0.26, 0.31)
+WALK_END = 0.20
+CARRY_OUT = (0.23, 0.28, 0.31)  # starts behind the back -> held out at its side -> set on the ground
 LID_OPEN = (0.31, 0.35)
-HANDS_OUT = (0.35, 0.38)
-LOOK = (0.64, 0.76)
-HANDS_IN = (0.76, 0.78)
-LID_CLOSE = (0.78, 0.82)
-SLIDE_IN = (0.82, 0.87)
-RUN = (0.88, 0.97)
+ARMS_OUT = (0.35, 0.38)
+LOOK = (0.62, 0.74)
+ARMS_IN = (0.74, 0.76)
+LID_CLOSE = (0.76, 0.80)
+CARRY_BACK = (0.80, 0.83, 0.88)  # lift -> back behind the back
+RUN = (0.89, 0.97)
+STEP_SECONDS = 0.16  # half a stride
+
+# Carry offsets of the laptop (sprite pixels) while it is behind the back / held at the side.
+HIDDEN_DX, HELD_DY = -19, -3
+LAPTOP_X = 23  # left edge of the laptop deck on the ground
 
 # Goblin body, left half (mirrored). g body, h highlight, e inner ear, s shade
 HALF_SPRITE = [
@@ -49,8 +59,6 @@ HALF_SPRITE = [
     "....sggggggg",
     ".....sgggggg",
 ]
-SPRITE_W = 24
-TOP = GROUND - 13  # sprite top row so legs end on the ground
 
 
 @dataclass(frozen=True)
@@ -62,8 +70,9 @@ class Theme:
     blush: str
     ink: str
     lid: str
-    lid_edge: str
-    lid_shadow: str
+    lid_light: str
+    lid_dark: str
+    deck: str
     keys: str
     base: str
     logo: str
@@ -73,26 +82,30 @@ class Theme:
 
 DARK = Theme(
     body="#82a353", highlight="#9cbf63", ear="#b3d47a", shade="#5f7d3a", blush="#e69a80",
-    ink="#0b0b0b", lid="#8a8580", lid_edge="#d1ccc7", lid_shadow="#5e5955", keys="#3d3936",
-    base="#b9b3ad", logo="#e8e3de", glyph="#d4a373", shadow_opacity=0.55,
+    ink="#0b0b0b", lid="#7d7873", lid_light="#cfc9c3", lid_dark="#55504c", deck="#b4aea8",
+    keys="#45413e", base="#5e5955", logo="#efeae5", glyph="#d4a373", shadow_opacity=0.55,
 )
 LIGHT = Theme(
     body="#82a353", highlight="#9cbf63", ear="#b3d47a", shade="#5f7d3a", blush="#e69a80",
-    ink="#1f2328", lid="#8a8580", lid_edge="#c9c3bd", lid_shadow="#5e5955", keys="#3d3936",
-    base="#a39d97", logo="#e8e3de", glyph="#9a6b2f", shadow_opacity=0.18,
+    ink="#1f2328", lid="#7d7873", lid_light="#c4beb8", lid_dark="#55504c", deck="#a8a29c",
+    keys="#45413e", base="#5e5955", logo="#efeae5", glyph="#9a6b2f", shadow_opacity=0.18,
 )
 
+
+# --- SVG helpers -----------------------------------------------------------------------------
 
 def kt(*values: float) -> str:
     return ";".join(f"{v:.4f}" for v in values)
 
 
-def px(x: float, y: float, w: float, h: float, fill: str) -> str:
-    return f'<rect x="{x * U:g}" y="{y * U:g}" width="{w * U:g}" height="{h * U:g}" fill="{fill}"/>'
+def px(x: float, y: float, w: float, h: float, fill: str, inner: str = "") -> str:
+    attrs = f'x="{x * U:g}" y="{y * U:g}" width="{w * U:g}" height="{h * U:g}" fill="{fill}"'
+    return f"<rect {attrs}>{inner}</rect>" if inner else f"<rect {attrs}/>"
 
 
-def on_timeline(kind: str, attribute: str, values: list[str], times: list[float], splines: list[str] | None = None) -> str:
-    """One animation driven by the main loop. kind is 'animate' or a transform type."""
+def on_timeline(kind: str, attribute: str, values: list[str], times: list[float],
+                splines: list[str] | None = None) -> str:
+    """One animation on the main loop. kind is 'animate' or a transform type (translate, scale)."""
     tag = "animate" if kind == "animate" else "animateTransform"
     type_attr = "" if kind == "animate" else f' type="{kind}"'
     mode = f' calcMode="spline" keySplines="{";".join(splines)}"' if splines else ""
@@ -102,23 +115,39 @@ def on_timeline(kind: str, attribute: str, values: list[str], times: list[float]
     )
 
 
-def opacity_window(start: float, end: float, fade: float = 0.0) -> str:
-    """Visible inside [start, end]; fade > 0 cross-fades at both ends."""
-    if fade:
-        return on_timeline("animate", "opacity", ["0", "0", "1", "1", "0", "0"],
-                           [0, start, start + fade, end - fade, end, 1])
+def visible(windows: list[tuple[float, float]]) -> str:
+    """Discrete opacity: 1 inside any of the windows, 0 elsewhere."""
+    values, times = ["0"], [0.0]
+    for start, end in windows:
+        values.append("1")
+        times.append(start)
+        if end < 1:
+            values.append("0")
+            times.append(end)
     return (
         f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" calcMode="discrete" '
-        f'values="0;1;0" keyTimes="{kt(0, start, end)}"/>'
+        f'values="{";".join(values)}" keyTimes="{kt(*times)}"/>'
     )
 
 
-def loop(kind: str, values: str, seconds: float, begin: float = 0) -> str:
+def pivot(x: float, y: float, inner: str, animation: str) -> str:
+    """Apply a scale animation around the sprite point (x, y)."""
     return (
-        f'<animateTransform attributeName="transform" type="{kind}" values="{values}" '
+        f'<g transform="translate({x * U:g} {y * U:g})"><g>{animation}'
+        f'<g transform="translate({-x * U:g} {-y * U:g})">{inner}</g></g></g>'
+    )
+
+
+def press(seconds: float, begin: float, rest: int, pressed: int) -> str:
+    """Looping height change so a forearm reaches down to the keys and back."""
+    return (
+        f'<animate attributeName="height" values="{rest * U};{pressed * U};{rest * U}" '
+        f'keyTimes="0;0.5;1" calcMode="spline" keySplines="{EASE_IN_OUT};{EASE_IN_OUT}" '
         f'dur="{seconds}s" begin="{begin}s" repeatCount="indefinite"/>'
     )
 
+
+# --- Goblin parts ----------------------------------------------------------------------------
 
 def body_pixels(t: Theme) -> str:
     colors = {"g": t.body, "h": t.highlight, "e": t.ear, "s": t.shade}
@@ -138,6 +167,7 @@ def body_pixels(t: Theme) -> str:
 
 
 def eyes(t: Theme) -> str:
+    """Happy closed eyes; open eyes glancing left and right while looking around."""
     closed = (
         px(6, 6, 1, 1, t.ink) + px(7, 5, 2, 1, t.ink) + px(9, 6, 1, 1, t.ink)
         + px(14, 6, 1, 1, t.ink) + px(15, 5, 2, 1, t.ink) + px(17, 6, 1, 1, t.ink)
@@ -151,130 +181,176 @@ def eyes(t: Theme) -> str:
         [0, start, start + step, start + 2 * step, start + 3 * step, end, 1],
         [LINEAR, EASE_IN_OUT, EASE_IN_OUT, EASE_IN_OUT, EASE_IN_OUT, LINEAR],
     )
-    hide_closed = (
-        f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" calcMode="discrete" '
-        f'values="1;0;1" keyTimes="{kt(0, start, end)}"/>'
+    return (
+        f'<g>{closed}{visible([(0, start), (end, 1)])}</g>'
+        f'<g opacity="0">{opened}{glance}{visible([(start, end)])}</g>'
     )
-    return f'<g>{closed}{hide_closed}</g><g opacity="0">{opened}{glance}{opacity_window(start, end)}</g>'
 
 
-def legs(t: Theme, moving_windows: list[tuple[float, float]]) -> str:
-    left, right = px(6, 11, 2, 2, t.body), px(16, 11, 2, 2, t.body)
-    left_shadow, right_shadow = px(6, 12, 2, 1, t.shade), px(16, 12, 2, 1, t.shade)
+def stride_bob() -> str:
+    """Body bob synced to footsteps while walking and running, still otherwise."""
+    values, times = ["0 0"], [0.0]
+    step = STEP_SECONDS / DURATION
+    for start, end in ((0.0, WALK_END), RUN):
+        if start > times[-1]:
+            values.append("0 0")
+            times.append(start)
+        t, up = start, True
+        while t + step <= end:
+            t += step
+            values.append(f"0 {-U}" if up else "0 0")
+            times.append(t)
+            up = not up
+        if values[-1] != "0 0":
+            values.append("0 0")
+            times.append(min(t + step / 2, end))
+    if times[-1] < 1:
+        values.append("0 0")
+        times.append(1.0)
+    return on_timeline("translate", "transform", values, times)
+
+
+def legs(t: Theme) -> str:
+    left = px(6, 11, 2, 2, t.body) + px(6, 12, 2, 1, t.shade)
+    right = px(16, 11, 2, 2, t.body) + px(16, 12, 2, 1, t.shade)
+    cycle = f"{2 * STEP_SECONDS}s"
     stride = (
-        f'<g>{left}{left_shadow}{loop("translate", f"0 0;0 {-U};0 0", 0.32)}</g>'
-        f'<g>{right}{right_shadow}{loop("translate", f"0 {-U};0 0;0 {-U}", 0.32)}</g>'
+        f'<g>{left}<animateTransform attributeName="transform" type="translate" '
+        f'values="0 0;0 {-U};0 0" dur="{cycle}" repeatCount="indefinite"/></g>'
+        f'<g>{right}<animateTransform attributeName="transform" type="translate" '
+        f'values="0 {-U};0 0;0 {-U}" dur="{cycle}" repeatCount="indefinite"/></g>'
     )
-    (w0, w1), (r0, r1) = moving_windows
-    walking_vis = (
-        f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" calcMode="discrete" '
-        f'values="1;0;1;0" keyTimes="{kt(0, w1, r0, r1)}"/>'
-    )
-    standing_vis = (
-        f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" calcMode="discrete" '
-        f'values="0;1;0;1" keyTimes="{kt(0, w1, r0, r1)}"/>'
-    )
-    return f'<g>{stride}{walking_vis}</g><g opacity="0">{left}{right}{left_shadow}{right_shadow}{standing_vis}</g>'
+    moving = [(0, WALK_END), RUN]
+    still = [(WALK_END, RUN[0]), (RUN[1], 1)]
+    return f'<g>{stride}{visible(moving)}</g><g opacity="0">{left}{right}{visible(still)}</g>'
+
+
+def carry_motion() -> tuple[list[str], list[float], list[str]]:
+    """Laptop offset keyframes: behind the back -> held at the side -> on the ground, and back."""
+    hidden, held, ground = (HIDDEN_DX, HELD_DY), (0, HELD_DY), (0, 0)
+    points = [hidden, hidden, held, ground, ground, held, hidden, hidden]
+    times = [0, CARRY_OUT[0], CARRY_OUT[1], CARRY_OUT[2], CARRY_BACK[0], CARRY_BACK[1], CARRY_BACK[2], 1]
+    splines = [LINEAR, EASE_OUT, EASE_IN_OUT, LINEAR, EASE_IN_OUT, EASE_IN, LINEAR]
+    return [f"{dx} {dy}" for dx, dy in points], times, splines
 
 
 def laptop(t: Theme) -> str:
-    """Drawn behind the goblin so it slides out from its side, then the lid swings open."""
-    hinge_x, hinge_y = 33 * U, 12 * U
-    lid = (
-        px(28, 5, 6, 7, t.lid) + px(28, 5, 6, 1, t.lid_edge) + px(33, 6, 1, 6, t.lid_shadow)
-        + px(30, 7, 1, 1, t.logo) + px(29, 8, 1, 1, t.logo) + px(31, 8, 1, 1, t.logo) + px(30, 9, 1, 1, t.logo)
+    """A laptop in three-quarter view: slanted lid (back facing us) and a deck with keys.
+
+    Drawn behind the body, so while it is behind the goblin's back it is hidden.
+    """
+    deck = (
+        px(LAPTOP_X, 11, 17, 1, t.deck)
+        + "".join(px(x, 11, 1, 1, t.keys) for x in range(LAPTOP_X + 1, LAPTOP_X + 9, 2))
+        + px(LAPTOP_X - 1, 12, 18, 1, t.base)
     )
-    lid_swing = on_timeline(
+    closed_lid = px(LAPTOP_X + 1, 10, 16, 1, t.lid) + px(LAPTOP_X + 1, 10, 1, 1, t.lid_light)
+    # Lid leans back: every two rows up it shifts one pixel right.
+    lid_rows = []
+    for row in range(2, 11):
+        shift = (10 - row) // 2
+        x0 = LAPTOP_X + 8 + shift
+        if row == 2:
+            lid_rows.append(px(x0, row, 9, 1, t.lid_light))
+            continue
+        lid_rows.append(px(x0, row, 1, 1, t.lid_light) + px(x0 + 1, row, 7, 1, t.lid) + px(x0 + 8, row, 1, 1, t.lid_dark))
+    cx = LAPTOP_X + 14  # logo centre column on the slanted lid
+    logo = px(cx, 5, 1, 1, t.logo) + px(cx - 1, 6, 3, 1, t.logo) + px(cx, 7, 1, 1, t.logo)
+    swing = on_timeline(
         "scale", "transform",
         ["1 0", "1 0", "1 1", "1 1", "1 0", "1 0"],
         [0, LID_OPEN[0], LID_OPEN[1], LID_CLOSE[0], LID_CLOSE[1], 1],
         [LINEAR, EASE_OUT, LINEAR, EASE_IN, LINEAR],
     )
-    hinged_lid = (
-        f'<g transform="translate({hinge_x} {hinge_y})"><g>{lid_swing}'
-        f'<g transform="translate({-hinge_x} {-hinge_y})">{lid}</g></g></g>'
+    lid = pivot(0, 11, "".join(lid_rows) + logo, swing)
+    closed_vis = visible([(0, LID_OPEN[0] + 0.01), (LID_CLOSE[1] - 0.01, 1)])
+    values, times, splines = carry_motion()
+    move = on_timeline("translate", "transform", [_scaled(v) for v in values], times, splines)
+    fade = 0.008
+    shown = on_timeline(
+        "animate", "opacity", ["0", "0", "1", "1", "0", "0"],
+        [0, CARRY_OUT[0], CARRY_OUT[0] + fade, CARRY_BACK[2] - fade, CARRY_BACK[2], 1],
     )
-    base = px(22, 11, 12, 1, t.base) + px(23, 11, 9, 1, t.keys) + px(22, 12, 12, 1, t.lid_shadow)
-    slide = on_timeline(
-        "translate", "transform",
-        [f"{-10 * U} 0", f"{-10 * U} 0", "0 0", "0 0", f"{-10 * U} 0", f"{-10 * U} 0"],
-        [0, SLIDE_OUT[0], SLIDE_OUT[1], SLIDE_IN[0], SLIDE_IN[1], 1],
-        [LINEAR, EASE_OUT, LINEAR, EASE_IN, LINEAR],
-    )
-    visible = opacity_window(SLIDE_OUT[0], SLIDE_IN[1], fade=0.01)
-    return f'<g opacity="0">{base}{hinged_lid}{slide}{visible}</g>'
+    return f'<g opacity="0"><g>{move}{deck}<g>{closed_lid}{closed_vis}</g>{lid}</g>{shown}</g>'
 
 
-def hands(t: Theme) -> str:
-    """Arms reach from the goblin's side onto the keyboard; the two hands tap alternately."""
-    hinge_x = 21 * U
-    arm = px(21, 9, 4, 1, t.shade) + px(21, 10, 7, 1, t.body)
-    hand_a = f'<g>{px(24, 10, 2, 1, t.highlight)}{loop("translate", f"0 0;0 {U};0 0", 0.2)}</g>'
-    hand_b = f'<g>{px(27, 10, 2, 1, t.highlight)}{loop("translate", f"0 {U};0 0;0 {U}", 0.2)}</g>'
+def _scaled(pair: str) -> str:
+    dx, dy = (int(v) for v in pair.split())
+    return f"{dx * U} {dy * U}"
+
+
+def carrying_arm(t: Theme) -> str:
+    """The back arm that holds the laptop: from inside the body to the laptop's left edge.
+
+    Its width and height track the laptop offset so the hand stays on the laptop.
+    """
+    values, times, splines = carry_motion()
+    offsets = [tuple(int(v) for v in value.split()) for value in values]
+    hand_x = LAPTOP_X  # the hand grips the closed laptop's left end
+    widths = [f"{(hand_x - 4 + 1 + dx) * U}" for dx, _ in offsets]  # arm starts inside the body at column 4
+    ys = [f"{(10 + dy) * U}" for _, dy in offsets]
+    arm = px(4, 10, hand_x - 4 + 1 + HIDDEN_DX, 1, t.body,
+             on_timeline("animate", "width", widths, times, splines)
+             + on_timeline("animate", "y", ys, times, splines))
+    return f'<g opacity="0">{arm}{visible([(CARRY_OUT[0], LID_OPEN[1]), (LID_CLOSE[0], CARRY_BACK[2])])}</g>'
+
+
+def typing_arm(t: Theme, color: str, shoulder_x: int, row: int, hand_x: int, begin: float) -> str:
+    """A stick arm reaching from the body to the keyboard; its forearm presses the keys."""
+    upper = px(shoulder_x, row, hand_x - shoulder_x, 1, color)
+    forearm = px(hand_x, row, 1, 11 - row, color, press(0.28, begin, 11 - row, 12 - row))
     reach = on_timeline(
         "scale", "transform",
         ["0 1", "0 1", "1 1", "1 1", "0 1", "0 1"],
-        [0, HANDS_OUT[0], HANDS_OUT[1], HANDS_IN[0], HANDS_IN[1], 1],
+        [0, ARMS_OUT[0], ARMS_OUT[1], ARMS_IN[0], ARMS_IN[1], 1],
         [LINEAR, EASE_OUT, LINEAR, EASE_IN, LINEAR],
     )
-    return (
-        f'<g opacity="0"><g transform="translate({hinge_x} 0)"><g>{reach}'
-        f'<g transform="translate({-hinge_x} 0)">{arm}{hand_a}{hand_b}</g></g></g>'
-        f'{opacity_window(HANDS_OUT[0], HANDS_IN[1])}</g>'
-    )
+    return f'<g opacity="0">{pivot(shoulder_x, row, upper + forearm, reach)}{visible([(ARMS_OUT[0], ARMS_IN[1])])}</g>'
 
 
 def glyphs(t: Theme) -> str:
     items = "".join(
-        f'<text x="{(26 + i * 3) * U}" y="{4 * U}" font-family="ui-monospace, Menlo, Consolas, monospace" '
-        f'font-size="8" fill="{t.glyph}" opacity="0">{text}'
+        f'<text x="{(LAPTOP_X + 2 + i * 4) * U}" y="{-1 * U}" font-family="ui-monospace, Menlo, Consolas, monospace" '
+        f'font-size="9" fill="{t.glyph}" opacity="0">{text}'
         f'<animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="{i * 0.4}s" repeatCount="indefinite"/>'
-        f'<animateTransform attributeName="transform" type="translate" values="0 4;0 -6" dur="1.2s" '
+        f'<animateTransform attributeName="transform" type="translate" values="0 6;0 -6" dur="1.2s" '
         f'begin="{i * 0.4}s" repeatCount="indefinite"/></text>'
         for i, text in enumerate(("{}", "&lt;/&gt;", ";"))
     )
-    return f'<g opacity="0">{items}{opacity_window(HANDS_OUT[1], LOOK[0])}</g>'
+    return f'<g opacity="0">{items}{visible([(ARMS_OUT[1], LOOK[0])])}</g>'
 
 
 def shadow(t: Theme) -> str:
-    """Soft ground shadow; stretches under the laptop while it is out."""
-    stretch = on_timeline(
-        "animate", "rx",
-        [f"{13 * U}", f"{13 * U}", f"{19 * U}", f"{19 * U}", f"{13 * U}", f"{13 * U}"],
-        [0, SLIDE_OUT[0], SLIDE_OUT[1], SLIDE_IN[0], SLIDE_IN[1], 1],
-    )
-    shift = on_timeline(
-        "animate", "cx",
-        [f"{12 * U}", f"{12 * U}", f"{17 * U}", f"{17 * U}", f"{12 * U}", f"{12 * U}"],
-        [0, SLIDE_OUT[0], SLIDE_OUT[1], SLIDE_IN[0], SLIDE_IN[1], 1],
-    )
+    """Soft ground shadow that stretches under the laptop while it is on the ground."""
+    times = [0, CARRY_OUT[1], CARRY_OUT[2], CARRY_BACK[0], CARRY_BACK[1], 1]
+    rx = on_timeline("animate", "rx", [f"{v * U}" for v in (13, 13, 21, 21, 13, 13)], times)
+    cx = on_timeline("animate", "cx", [f"{v * U}" for v in (12, 12, 21, 21, 12, 12)], times)
     return (
         f'<ellipse cx="{12 * U}" cy="{13 * U}" rx="{13 * U}" ry="{U}" fill="#000" '
-        f'opacity="{t.shadow_opacity}">{stretch}{shift}</ellipse>'
+        f'opacity="{t.shadow_opacity}">{rx}{cx}</ellipse>'
     )
 
 
 def render(t: Theme) -> str:
-    start_x = -40 * U
-    stop_x = WIDTH // 2 - 16 * U
-    exit_x = WIDTH + 10 * U
-    y = TOP * U
+    start_x, stop_x, exit_x = -45 * U, WIDTH // 2 - 20 * U, WIDTH + 10 * U
+    y = TOP_MARGIN * U
     travel = on_timeline(
         "translate", "transform",
         [f"{start_x} {y}", f"{stop_x} {y}", f"{stop_x} {y}", f"{exit_x} {y}", f"{exit_x} {y}"],
         [0, WALK_END, RUN[0], RUN[1], 1],
         [EASE_OUT, LINEAR, EASE_IN, LINEAR],
     )
-    bob = loop("translate", f"0 0;0 {-U / 2:g};0 0", 0.32)
-    goblin = (
-        f'{shadow(t)}{laptop(t)}'
-        f'<g>{body_pixels(t)}{eyes(t)}{bob}</g>'
-        f'{legs(t, [(0, WALK_END), RUN])}{hands(t)}{glyphs(t)}'
+    behind = (
+        shadow(t) + laptop(t) + carrying_arm(t)
+        + typing_arm(t, t.shade, shoulder_x=18, row=8, hand_x=LAPTOP_X + 3, begin=0.14)
     )
+    front = typing_arm(t, t.highlight, shoulder_x=17, row=9, hand_x=LAPTOP_X + 6, begin=0.0) + glyphs(t)
+    goblin = f'{behind}<g>{body_pixels(t)}{eyes(t)}{stride_bob()}</g>{legs(t)}{front}'
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" '
         f'viewBox="0 0 {WIDTH} {HEIGHT}" shape-rendering="crispEdges" role="img" '
-        f'aria-label="A pixel goblin pulls out a laptop, codes for a while, looks around and runs off">'
+        f'aria-label="A pixel goblin pulls a laptop from behind its back, codes for a while, '
+        f'looks around and runs off">'
         f'<g transform="translate({start_x} {y})">{travel}{goblin}</g></svg>'
     )
 
