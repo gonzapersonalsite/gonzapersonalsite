@@ -237,7 +237,7 @@ def render_laptop(t: Theme) -> str:
         f'<animate attributeName="opacity" values="0;1;0" dur="0.9s" begin="{i * 0.3}s" repeatCount="indefinite"/>'
         f'<animateTransform attributeName="transform" type="translate" values="0 6;0 -6" dur="0.9s" '
         f'begin="{i * 0.3}s" repeatCount="indefinite"/></text>'
-        for i, text in enumerate(("{}", "</>", ";"))
+        for i, text in enumerate(("{}", "&lt;/&gt;", ";"))
     )
     typing_fx = f'<g opacity="0">{glyphs}{timeline("opacity", "0;1;0", kt(0, LAPTOP_OUT, TYPE_END), discrete=True)}</g>'
     return (
