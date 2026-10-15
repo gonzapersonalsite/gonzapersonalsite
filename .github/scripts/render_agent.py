@@ -1,4 +1,7 @@
-"""Render an animated SVG of a pixel robot typing commits into the contribution graph.
+"""Render an animated SVG of Gonzalo's pixel goblin coding over the contribution graph.
+
+Story (one loop): the goblin strolls in, pulls out a laptop and types while the
+contribution graph fills in, looks left and right, stashes the laptop and runs off.
 
 Usage: python render_agent.py <github_user> <output_dir>
 Requires GITHUB_TOKEN in the environment to read the contribution calendar.
@@ -41,63 +44,83 @@ CELL = 10
 GAP = 3
 STEP = CELL + GAP
 MARGIN = 12
-U = 5  # robot pixel size
-DURATION = 12  # seconds per loop
+U = 4  # sprite pixel size
+DURATION = 14  # seconds per loop
 
 # Timeline (fractions of DURATION)
-WALK_END = 0.22
-LAPTOP_IN = 0.27
-FILL_START = 0.29
-FILL_END = 0.84
-BUBBLE_START = 0.30
-BUBBLE_END = 0.46
-HOLD_END = 0.94
+WALK_END = 0.28
+LAPTOP_OUT = 0.31
+TYPE_END = 0.62
+LOOK_END = 0.74
+LAPTOP_AWAY = 0.77
+RUN_END = 0.88
+GRAPH_FADE = 0.96
+
+# Goblin sprite, left half (mirrored to build the full 24px-wide body).
+# g body, h highlight, e inner ear, s shade
+HALF_SPRITE = [
+    "........gggg",
+    "gg....gggggg",
+    ".eeh.ggggggg",
+    "..eehggggggg",
+    "...eeggggggg",
+    "....gggggggg",
+    "....gggggggg",
+    "....gggggggg",
+    "....sggggggg",
+    "....sggggggg",
+    ".....sgggggg",
+]
+LEGS_LEFT_X = 6  # leg columns 6-7 (mirrored to 16-17)
+LEG_ROWS = (11, 12)
+SPRITE_W = 24
+SPRITE_H = 13
 
 
 @dataclass(frozen=True)
 class Theme:
     name: str
     cells: tuple[str, str, str, str, str]
-    robot_outline: str
-    robot_body: str
-    robot_shade: str
-    visor: str
-    eyes: str
-    accent: str
+    body: str
+    highlight: str
+    ear: str
+    shade: str
+    blush: str
+    ink: str
     laptop: str
-    laptop_base: str
-    bubble_bg: str
-    bubble_fg: str
+    laptop_light: str
+    floor: str
+    glyph: str
 
-
-LIGHT = Theme(
-    name="light",
-    cells=("#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"),
-    robot_outline="#3b4a5e",
-    robot_body="#8fa3bf",
-    robot_shade="#6f84a3",
-    visor="#1b2430",
-    eyes="#2ee6d6",
-    accent="#d4a373",
-    laptop="#c9d1d9",
-    laptop_base="#57606a",
-    bubble_bg="#24292f",
-    bubble_fg="#e6edf3",
-)
 
 DARK = Theme(
     name="dark",
     cells=("#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"),
-    robot_outline="#4a5d78",
-    robot_body="#9fb3cf",
-    robot_shade="#7a90b0",
-    visor="#0d1117",
-    eyes="#2ee6d6",
-    accent="#d4a373",
-    laptop="#d0d7de",
-    laptop_base="#6e7781",
-    bubble_bg="#e6edf3",
-    bubble_fg="#0d1117",
+    body="#82a353",
+    highlight="#9cbf63",
+    ear="#b3d47a",
+    shade="#5f7d3a",
+    blush="#e69a80",
+    ink="#0b0b0b",
+    laptop="#88827f",
+    laptop_light="#d1ccc7",
+    floor="#222222",
+    glyph="#d4a373",
+)
+
+LIGHT = Theme(
+    name="light",
+    cells=("#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"),
+    body="#82a353",
+    highlight="#9cbf63",
+    ear="#b3d47a",
+    shade="#5f7d3a",
+    blush="#e69a80",
+    ink="#1f2328",
+    laptop="#6e7781",
+    laptop_light="#afb8c1",
+    floor="#d0d7de",
+    glyph="#9a6b2f",
 )
 
 
@@ -127,82 +150,122 @@ def kt(*values: float) -> str:
     return ";".join(f"{v:.4f}" for v in values)
 
 
-def rect(x: float, y: float, w: float, h: float, fill: str, extra: str = "") -> str:
-    return f'<rect x="{x * U}" y="{y * U}" width="{w * U}" height="{h * U}" fill="{fill}"{extra}/>'
+def px(x: float, y: float, w: float, h: float, fill: str) -> str:
+    return f'<rect x="{x * U:g}" y="{y * U:g}" width="{w * U:g}" height="{h * U:g}" fill="{fill}"/>'
 
 
-def render_robot(t: Theme) -> str:
-    """Pixel robot facing the viewer, 14x21 robot-pixels, origin at its top-left."""
-    head = "".join([
-        rect(6, 1, 1, 2, t.robot_outline),
-        f'<g>{rect(5, -1, 3, 2, t.accent)}'
-        f'<animate attributeName="opacity" values="1;0.25;1" dur="1.2s" repeatCount="indefinite"/></g>',
-        rect(1, 3, 12, 8, t.robot_outline),
-        rect(2, 4, 10, 6, t.robot_body),
-        rect(2, 8, 10, 2, t.robot_shade),
-        rect(3, 5, 8, 3, t.visor),
-        f'<g>{rect(4, 6, 2, 1, t.eyes)}{rect(8, 6, 2, 1, t.eyes)}'
-        f'<animate attributeName="opacity" values="1;1;0;1" keyTimes="0;0.92;0.96;1" '
-        f'dur="3.5s" repeatCount="indefinite"/></g>',
-        rect(6, 11, 2, 1, t.robot_outline),
-    ])
-    body = "".join([
-        rect(2, 12, 10, 6, t.robot_outline),
-        rect(3, 13, 8, 4, t.robot_body),
-        rect(3, 16, 8, 1, t.robot_shade),
-        rect(6, 14, 2, 1, t.accent),
-    ])
-    side_arms = rect(1, 13, 1, 4, t.robot_outline) + rect(12, 13, 1, 4, t.robot_outline)
-    walking_legs = (
-        f'<g>{rect(4, 18, 2, 3, t.robot_outline)}'
-        f'<animateTransform attributeName="transform" type="translate" values="0 0;0 -{U};0 0" '
-        f'dur="0.36s" repeatCount="indefinite"/></g>'
-        f'<g>{rect(8, 18, 2, 3, t.robot_outline)}'
-        f'<animateTransform attributeName="transform" type="translate" values="0 -{U};0 0;0 -{U}" '
-        f'dur="0.36s" repeatCount="indefinite"/></g>'
+def timeline(attribute: str, values: str, key_times: str, discrete: bool = False) -> str:
+    mode = ' calcMode="discrete"' if discrete else ""
+    return (
+        f'<animate attributeName="{attribute}" dur="{DURATION}s" repeatCount="indefinite"'
+        f'{mode} values="{values}" keyTimes="{key_times}"/>'
     )
-    standing_legs = rect(4, 18, 2, 3, t.robot_outline) + rect(8, 18, 2, 3, t.robot_outline)
-    laptop = (
-        rect(1, 13, 12, 6, t.laptop)
-        + rect(1, 13, 12, 1, t.laptop_base)
-        + rect(6, 15, 2, 2, t.accent)
-        + rect(0, 19, 14, 1, t.laptop_base)
+
+
+def loop_translate(values: str, seconds: float) -> str:
+    return (
+        f'<animateTransform attributeName="transform" type="translate" values="{values}" '
+        f'dur="{seconds}s" repeatCount="indefinite"/>'
     )
-    typing_hands = (
-        f'<g>{rect(0, 18, 2, 1, t.robot_outline)}'
-        f'<animateTransform attributeName="transform" type="translate" values="0 0;0 {U};0 0" '
-        f'dur="0.24s" repeatCount="indefinite"/></g>'
-        f'<g>{rect(12, 18, 2, 1, t.robot_outline)}'
-        f'<animateTransform attributeName="transform" type="translate" values="0 {U};0 0;0 {U}" '
-        f'dur="0.24s" repeatCount="indefinite"/></g>'
+
+
+def render_body(t: Theme) -> str:
+    colors = {"g": t.body, "h": t.highlight, "e": t.ear, "s": t.shade}
+    parts = []
+    for y, half in enumerate(HALF_SPRITE):
+        row = half + half[::-1]
+        x = 0
+        while x < len(row):
+            char = row[x]
+            run = 1
+            while x + run < len(row) and row[x + run] == char:
+                run += 1
+            if char in colors:
+                parts.append(px(x, y, run, 1, colors[char]))
+            x += run
+    # Face: blush and mouth are fixed, eyes are animated separately.
+    parts.append(px(6, 7, 1, 1, t.blush))
+    parts.append(px(17, 7, 1, 1, t.blush))
+    parts.append(px(11, 7, 2, 1, t.ink))
+    return "".join(parts)
+
+
+def render_eyes(t: Theme) -> str:
+    """Happy closed eyes while strolling and typing; open eyes glancing sideways when looking around."""
+    closed = (
+        px(6, 6, 1, 1, t.ink) + px(7, 5, 2, 1, t.ink) + px(9, 6, 1, 1, t.ink)
+        + px(14, 6, 1, 1, t.ink) + px(15, 5, 2, 1, t.ink) + px(17, 6, 1, 1, t.ink)
     )
-    walking_phase = (
-        f'<g>{side_arms}{walking_legs}'
-        f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" '
-        f'calcMode="discrete" values="1;0" keyTimes="{kt(0, WALK_END)}"/></g>'
+    open_eyes = px(7, 5, 2, 2, t.ink) + px(15, 5, 2, 2, t.ink)
+    look = (
+        f'<animateTransform attributeName="transform" type="translate" dur="{DURATION}s" '
+        f'repeatCount="indefinite" calcMode="discrete" '
+        f'values="0 0;{-U} 0;{U} 0;{-U} 0;{U} 0;0 0" '
+        f'keyTimes="{kt(0, TYPE_END, 0.65, 0.68, 0.71, LOOK_END)}"/>'
     )
-    typing_phase = (
-        f'<g opacity="0">{standing_legs}{laptop}{typing_hands}'
-        f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" '
-        f'values="0;0;1;1;0" keyTimes="{kt(0, WALK_END, LAPTOP_IN, HOLD_END, 1)}"/></g>'
+    return (
+        f'<g>{closed}{timeline("opacity", "1;0;1", kt(0, TYPE_END, LOOK_END), discrete=True)}</g>'
+        f'<g opacity="0">{open_eyes}{look}'
+        f'{timeline("opacity", "0;1;0", kt(0, TYPE_END, LOOK_END), discrete=True)}</g>'
     )
-    bob = (
-        f'<animateTransform attributeName="transform" type="translate" '
-        f'values="0 0;0 -{U};0 0" dur="0.36s" repeatCount="indefinite"/>'
+
+
+def render_legs(t: Theme) -> str:
+    right_x = SPRITE_W - LEGS_LEFT_X - 2
+    left = px(LEGS_LEFT_X, LEG_ROWS[0], 2, 2, t.body)
+    right = px(right_x, LEG_ROWS[0], 2, 2, t.body)
+    moving = (
+        f'<g>{left}{loop_translate(f"0 0;0 {-U};0 0", 0.3)}</g>'
+        f'<g>{right}{loop_translate(f"0 {-U};0 0;0 {-U}", 0.3)}</g>'
     )
-    return f'<g>{head}{body}{bob}</g>{walking_phase}{typing_phase}'
+    walking = f'<g>{moving}{timeline("opacity", "1;0;1", kt(0, WALK_END, LAPTOP_AWAY), discrete=True)}</g>'
+    standing = (
+        f'<g opacity="0">{left}{right}'
+        f'{timeline("opacity", "0;1;0", kt(0, WALK_END, LAPTOP_AWAY), discrete=True)}</g>'
+    )
+    return walking + standing
+
+
+def render_laptop(t: Theme) -> str:
+    """Open laptop to the goblin's right, lid facing the viewer with a small logo."""
+    lid = px(27, 4, 7, 7, t.laptop) + px(27, 4, 7, 1, t.laptop_light) + px(26, 5, 1, 6, t.laptop_light)
+    logo = px(30, 6, 1, 1, t.laptop_light) + px(29, 7, 1, 1, t.laptop_light) + px(31, 7, 1, 1, t.laptop_light) + px(30, 8, 1, 1, t.laptop_light)
+    base = px(21, 11, 13, 1, t.laptop_light) + px(21, 12, 13, 1, t.laptop)
+    glyphs = "".join(
+        f'<text x="{(23 + i * 3) * U}" y="{3 * U}" font-family="ui-monospace, Menlo, Consolas, monospace" '
+        f'font-size="10" fill="{t.glyph}" opacity="0">{text}'
+        f'<animate attributeName="opacity" values="0;1;0" dur="0.9s" begin="{i * 0.3}s" repeatCount="indefinite"/>'
+        f'<animateTransform attributeName="transform" type="translate" values="0 6;0 -6" dur="0.9s" '
+        f'begin="{i * 0.3}s" repeatCount="indefinite"/></text>'
+        for i, text in enumerate(("{}", "</>", ";"))
+    )
+    typing_fx = f'<g opacity="0">{glyphs}{timeline("opacity", "0;1;0", kt(0, LAPTOP_OUT, TYPE_END), discrete=True)}</g>'
+    return (
+        f'<g opacity="0">{lid}{logo}{base}'
+        f'{timeline("opacity", "0;1;0", kt(0, LAPTOP_OUT, LAPTOP_AWAY), discrete=True)}</g>'
+        f'{typing_fx}'
+    )
+
+
+def render_goblin(t: Theme) -> str:
+    bob = loop_translate(f"0 0;0 {-U // 2};0 0", 0.3)
+    typing_bounce = (
+        f'<g>{render_body(t)}{render_eyes(t)}{bob}</g>'
+    )
+    return typing_bounce + render_legs(t) + render_laptop(t)
 
 
 def render(weeks: list[list[int]], t: Theme) -> str:
     grid_w = len(weeks) * STEP - GAP
     grid_h = 7 * STEP - GAP
     width = grid_w + 2 * MARGIN
-    robot_top = MARGIN + grid_h + 14
-    height = robot_top + 22 * U + MARGIN
+    sprite_top = MARGIN + grid_h + 22
+    floor_y = sprite_top + SPRITE_H * U
+    height = floor_y + U + MARGIN
 
     base = []
     fills = []
-    span = FILL_END - FILL_START
+    span = TYPE_END - LAPTOP_OUT
     for col, week in enumerate(weeks):
         x = MARGIN + col * STEP
         lit = []
@@ -212,47 +275,30 @@ def render(weeks: list[list[int]], t: Theme) -> str:
             if level:
                 lit.append(f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill="{t.cells[level]}"/>')
         if lit:
-            on = FILL_START + span * col / max(len(weeks) - 1, 1)
+            on = LAPTOP_OUT + span * col / max(len(weeks) - 1, 1)
             fills.append(
                 f'<g opacity="0">{"".join(lit)}'
-                f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" '
-                f'values="0;0;1;1;0" keyTimes="{kt(0, on, min(on + 0.02, HOLD_END), HOLD_END, 1)}"/></g>'
+                f'{timeline("opacity", "0;0;1;1;0", kt(0, on, min(on + 0.02, GRAPH_FADE), GRAPH_FADE, 1))}</g>'
             )
 
-    stop_x = MARGIN + grid_w * 0.38
-    robot = (
-        f'<g transform="translate({-20 * U} {robot_top})">'
-        f'<animateTransform attributeName="transform" type="translate" dur="{DURATION}s" '
-        f'repeatCount="indefinite" values="{-20 * U} {robot_top};{stop_x:.0f} {robot_top};{stop_x:.0f} {robot_top}" '
-        f'keyTimes="{kt(0, WALK_END, 1)}"/>'
-        f'{render_robot(t)}</g>'
+    start_x = -40 * U
+    stop_x = MARGIN + grid_w * 0.4
+    exit_x = width + 10 * U
+    goblin = (
+        f'<g transform="translate({start_x} {sprite_top})">'
+        f'<animateTransform attributeName="transform" type="translate" dur="{DURATION}s" repeatCount="indefinite" '
+        f'values="{start_x} {sprite_top};{stop_x:.0f} {sprite_top};{stop_x:.0f} {sprite_top};'
+        f'{exit_x} {sprite_top};{exit_x} {sprite_top}" '
+        f'keyTimes="{kt(0, WALK_END, LAPTOP_AWAY, RUN_END, 1)}"/>'
+        f'{render_goblin(t)}</g>'
     )
-
-    message = 'git commit -m "ship it" ✓'
-    bubble_x = stop_x + 17 * U
-    bubble_y = robot_top + 2 * U
-    bubble_w = 7.2 * len(message) + 16
-    bubble = (
-        f'<g opacity="0">'
-        f'<rect x="{bubble_x:.0f}" y="{bubble_y}" width="{bubble_w:.0f}" height="24" rx="6" fill="{t.bubble_bg}"/>'
-        f'<path d="M{bubble_x:.0f} {bubble_y + 14} l-8 4 l8 -10 z" fill="{t.bubble_bg}"/>'
-        f'<clipPath id="type-{t.name}"><rect x="{bubble_x + 8:.0f}" y="{bubble_y}" width="0" height="24">'
-        f'<animate attributeName="width" dur="{DURATION}s" repeatCount="indefinite" '
-        f'values="0;0;{bubble_w - 16:.0f};{bubble_w - 16:.0f}" keyTimes="{kt(0, BUBBLE_START, BUBBLE_END, 1)}"/>'
-        f'</rect></clipPath>'
-        f'<text x="{bubble_x + 8:.0f}" y="{bubble_y + 16}" clip-path="url(#type-{t.name})" '
-        f'font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" '
-        f'fill="{t.bubble_fg}">{message.replace(chr(34), "&quot;")}</text>'
-        f'<animate attributeName="opacity" dur="{DURATION}s" repeatCount="indefinite" '
-        f'calcMode="discrete" values="0;1;0" keyTimes="{kt(0, BUBBLE_START, HOLD_END)}"/>'
-        f'</g>'
-    )
+    floor = f'<rect x="0" y="{floor_y}" width="{width}" height="{U}" fill="{t.floor}"/>'
 
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{height:.0f}" '
-        f'viewBox="0 0 {width:.0f} {height:.0f}" shape-rendering="crispEdges" role="img" '
-        f'aria-label="A pixel robot types on a laptop while the contribution graph fills in">'
-        f'{"".join(base)}{"".join(fills)}{robot}{bubble}</svg>'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}" shape-rendering="crispEdges" role="img" '
+        f'aria-label="A pixel goblin codes on a laptop while the contribution graph fills in">'
+        f'{"".join(base)}{"".join(fills)}{floor}{goblin}</svg>'
     )
 
 
