@@ -40,8 +40,9 @@ LOOK = (0.62, 0.74)
 LID_CLOSE = (0.76, 0.80)
 STASH = (0.80, 0.84, 0.88)  # in front -> out at its side -> behind the back
 RUN = (0.89, 0.97)
-STEP_SECONDS = 0.16  # half a stride
+STEP_SECONDS = 0.08  # a quarter of a stride: lift, plant, lift the other foot, plant
 TAP_SECONDS = 0.14  # half a typing beat
+GAIT_WINDOWS = [(0.0, WALK_END, STEP_SECONDS), (RUN[0], RUN[1], STEP_SECONDS)]
 
 # Laptop offsets (sprite pixels) relative to its resting place in front of the goblin.
 LAPTOP_X = 14  # left edge of the deck when resting in front of the goblin
@@ -141,20 +142,24 @@ def pivot(x: float, y: float, inner: str, animation: str) -> str:
     )
 
 
-def bounce(windows: list[tuple[float, float, float]]) -> str:
-    """Body bounce on the main loop: up a pixel every other beat inside each (start, end, beat) window."""
+def beat_motion(windows: list[tuple[float, float, float]], pattern: list[int]) -> str:
+    """Vertical offsets on the main loop, one pattern step per beat inside each (start, end, beat) window.
+
+    Body and legs share the same windows and beats, so they always stay in step with each other.
+    pattern holds offsets in sprite pixels (negative = up) and repeats; outside the windows it is 0.
+    """
     values, times = ["0 0"], [0.0]
     for start, end, beat_seconds in windows:
         if start > times[-1]:
             values.append("0 0")
             times.append(start)
         step = beat_seconds / DURATION
-        t, up = start, True
+        t, k = start, 0
         while t + step <= end:
             t += step
-            values.append(f"0 {-U}" if up else "0 0")
+            values.append(f"0 {pattern[k % len(pattern)] * U}")
             times.append(t)
-            up = not up
+            k += 1
         if values[-1] != "0 0":
             values.append("0 0")
             times.append(min(t + step / 2, end))
@@ -213,23 +218,18 @@ def lean() -> str:
 
 
 def feet(t: Theme) -> tuple[str, str]:
-    left = px(6, 11, 2, 2, t.body) + px(6, 12, 2, 1, t.shade)
-    right = px(16, 11, 2, 2, t.body) + px(16, 12, 2, 1, t.shade)
+    # The top row tucks under the body so a planted foot stays attached while the body rises.
+    left = px(6, 10, 2, 3, t.body) + px(6, 12, 2, 1, t.shade)
+    right = px(16, 10, 2, 3, t.body) + px(16, 12, 2, 1, t.shade)
     return left, right
 
 
 def legs(t: Theme) -> str:
+    """Both feet take turns lifting while walking and running; the body rises on every lift."""
     left, right = feet(t)
-    cycle = f"{2 * STEP_SECONDS}s"
-    stride = (
-        f'<g>{left}<animateTransform attributeName="transform" type="translate" '
-        f'values="0 0;0 {-U};0 0" dur="{cycle}" repeatCount="indefinite"/></g>'
-        f'<g>{right}<animateTransform attributeName="transform" type="translate" '
-        f'values="0 {-U};0 0;0 {-U}" dur="{cycle}" repeatCount="indefinite"/></g>'
-    )
-    moving = [(0, WALK_END), RUN]
-    still = [(WALK_END, RUN[0]), (RUN[1], 1)]
-    return f'<g>{stride}{visible(moving)}</g><g opacity="0">{left}{right}{visible(still)}</g>'
+    left_step = beat_motion(GAIT_WINDOWS, [-1, 0, 0, 0])
+    right_step = beat_motion(GAIT_WINDOWS, [0, 0, -1, 0])
+    return f'<g>{left}{left_step}</g><g>{right}{right_step}</g>'
 
 
 def stub_hand(t: Theme, x: int, y: int) -> str:
@@ -331,7 +331,7 @@ def render(t: Theme) -> str:
         [0, WALK_END, RUN[0], RUN[1], 1],
         [EASE_OUT, LINEAR, EASE_IN, LINEAR],
     )
-    body_bounce = bounce([(0.0, WALK_END, STEP_SECONDS), (TYPING[0], TYPING[1], TAP_SECONDS), (RUN[0], RUN[1], STEP_SECONDS)])
+    body_bounce = beat_motion(GAIT_WINDOWS[:1] + [(TYPING[0], TYPING[1], TAP_SECONDS)] + GAIT_WINDOWS[1:], [-1, 0])
     body = f'<g>{lean()}<g>{body_pixels(t)}{eyes(t)}{body_bounce}</g></g>'
     behind = laptop(t, [(PULL[0], PULL[1]), (STASH[1], STASH[2])])
     in_front = laptop(t, [(PULL[1], STASH[1])])
