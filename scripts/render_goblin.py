@@ -1,9 +1,10 @@
 """Render the animated pixel goblin shown at the top of the profile README.
 
-Story (one loop): the goblin strolls in, leans and pulls a laptop out from behind
-its back, sets it down in front of itself, opens it and types with its two stubby
-hands, looks left and right, closes the laptop, tucks it behind its back again and
-runs off.
+Story (one loop): a side-view 2D portal opens on the left and the goblin strolls
+out of it, leans and pulls a laptop out from behind its back, sets it down in
+front of itself, opens it and types with its two stubby hands, looks left and
+right, closes the laptop, tucks it behind its back again and runs into a portal
+that opens on the right.
 
 Usage: python scripts/render_goblin.py assets
 Writes goblin.svg (light) and goblin-dark.svg (dark) into the given directory.
@@ -83,17 +84,22 @@ class Theme:
     logo: str
     glyph: str
     shadow_opacity: float
+    portal_glow: str
+    portal_rim: str
+    portal_core: str
 
 
 DARK = Theme(
     body="#82a353", highlight="#9cbf63", ear="#b3d47a", shade="#5f7d3a", blush="#e69a80",
     ink="#0b0b0b", lid="#7d7873", lid_light="#cfc9c3", lid_dark="#55504c", deck="#b4aea8",
     keys="#45413e", base="#5e5955", logo="#efeae5", glyph="#d4a373", shadow_opacity=0.55,
+    portal_glow="#4b35b8", portal_rim="#5de0e6", portal_core="#e0f7fa",
 )
 LIGHT = Theme(
     body="#82a353", highlight="#9cbf63", ear="#b3d47a", shade="#5f7d3a", blush="#e69a80",
     ink="#1f2328", lid="#7d7873", lid_light="#c4beb8", lid_dark="#55504c", deck="#a8a29c",
     keys="#45413e", base="#5e5955", logo="#efeae5", glyph="#9a6b2f", shadow_opacity=0.18,
+    portal_glow="#90caf9", portal_rim="#1976d2", portal_core="#fff8e1",
 )
 
 
@@ -322,9 +328,134 @@ def shadow(t: Theme) -> str:
     )
 
 
+def portal_particle(x: float, y: float, w: float, h: float, fill: str,
+                    dx1: float, dy1: float, dx2: float, dy2: float,
+                    open_start: float, close_end: float, phase: float) -> str:
+    span = close_end - open_start
+    t1 = round(open_start + span * (0.18 + phase), 4)
+    t2 = round(open_start + span * (0.44 + phase), 4)
+    t3 = round(open_start + span * (0.70 + phase), 4)
+    p1 = f"{dx1 * U:g} {dy1 * U:g}"
+    p2 = f"{dx2 * U:g} {dy2 * U:g}"
+    times = [0, open_start, t1, t2, t3, close_end, 1]
+    splines = [LINEAR, EASE_IN_OUT, EASE_IN_OUT, EASE_IN_OUT, EASE_IN_OUT, LINEAR]
+    motion = on_timeline("translate", "transform", ["0 0", "0 0", p1, p2, p1, "0 0", "0 0"], times, splines)
+    opacity = on_timeline("animate", "opacity", ["0.72", "0.72", "1", "0.72", "1", "0.72", "0.72"], times, splines)
+    return (
+        f'<g>{motion}<rect x="{x * U:g}" y="{y * U:g}" width="{w * U:g}" height="{h * U:g}" '
+        f'fill="{fill}">{opacity}</rect></g>'
+    )
+
+
+def ring_scale(open_start: float, open_end: float, close_start: float, close_end: float) -> str:
+    return on_timeline(
+        "scale", "transform",
+        ["0 0", "0 0", "1 1", "1 1", "0 0", "0 0"],
+        [0, open_start, open_end, close_start, close_end, 1],
+        [LINEAR, EASE_OUT, LINEAR, EASE_IN, LINEAR],
+    )
+
+
+def portal(side: str, portal_x: int, portal_y: int, t: Theme,
+           open_start: float, open_full: float, close_start: float, close_end: float) -> str:
+    inward = 1 if side == "entry" else -1
+    glow = "".join([
+        px(0, -8, 1, 1, t.portal_glow),
+        px(-1, -7, 3, 1, t.portal_glow),
+        px(-2, -6, 5, 2, t.portal_glow),
+        px(-3, -4, 7, 9, t.portal_glow),
+        px(-2, 5, 5, 2, t.portal_glow),
+        px(-1, 7, 3, 1, t.portal_glow),
+        px(-2, 8, 5, 1, t.portal_glow),
+    ])
+    rim = "".join([
+        px(0, -7, 1, 1, t.portal_rim),
+        px(-1, -6, 3, 2, t.portal_rim),
+        px(-2, -4, 5, 9, t.portal_rim),
+        px(-1, 5, 3, 2, t.portal_rim),
+        px(-1, 7, 3, 2, t.portal_rim),
+    ])
+    core = "".join([
+        px(0, -6, 1, 2, t.portal_core),
+        px(-1, -4, 3, 9, t.portal_core),
+        px(0, 5, 1, 3, t.portal_core),
+        px(-1, -3, 1, 2, t.portal_glow),
+        px(1, -1, 1, 2, t.portal_glow),
+        px(-1, 1, 1, 2, t.portal_glow),
+        px(1, 3, 1, 1, t.portal_glow),
+        px(0, 8, 1, 1, t.portal_core),
+    ])
+    particles = "".join([
+        portal_particle(inward * 3, -6, 1, 1, t.portal_core, inward * 1, -0.5, -inward * 0.5, 0.5, open_start, close_end, 0.00),
+        portal_particle(inward * 4, -3, 1, 2, t.portal_rim, inward * 1, 0.5, -inward * 0.5, -0.5, open_start, close_end, 0.03),
+        portal_particle(-inward * 3, -5, 1, 1, t.portal_core, -inward * 0.5, -0.5, inward * 0.5, 0.5, open_start, close_end, 0.06),
+        portal_particle(inward * 4, 0, 2, 1, t.portal_core, inward * 1, -0.5, -inward * 0.5, 0.5, open_start, close_end, 0.02),
+        portal_particle(inward * 3, 3, 1, 2, t.portal_rim, inward * 1, 0.5, -inward * 0.5, -0.5, open_start, close_end, 0.05),
+        portal_particle(-inward * 3, 3, 1, 1, t.portal_glow, -inward * 0.5, 0.5, inward * 0.5, -0.5, open_start, close_end, 0.08),
+        portal_particle(inward * 4, 6, 1, 1, t.portal_core, inward * 1, -0.5, -inward * 0.5, 0.5, open_start, close_end, 0.04),
+        portal_particle(inward * 1, -8, 1, 1, t.portal_core, inward * 0.5, -0.5, -inward * 0.5, 0.5, open_start, close_end, 0.07),
+    ])
+    open_span = open_full - open_start
+    close_span = close_end - close_start
+    core_s = ring_scale(
+        open_start,
+        round(open_start + open_span * 0.64, 4),
+        round(close_start + close_span * 0.36, 4),
+        close_end,
+    )
+    rim_s = ring_scale(
+        round(open_start + open_span * 0.18, 4),
+        round(open_start + open_span * 0.82, 4),
+        round(close_start + close_span * 0.18, 4),
+        round(close_end - close_span * 0.18, 4),
+    )
+    outer_s = ring_scale(
+        round(open_start + open_span * 0.36, 4),
+        open_full,
+        close_start,
+        round(close_end - close_span * 0.36, 4),
+    )
+    pt1 = round(open_start + (close_end - open_start) * 0.25, 4)
+    pt2 = round(open_start + (close_end - open_start) * 0.50, 4)
+    pt3 = round(open_start + (close_end - open_start) * 0.75, 4)
+    core_pulse = on_timeline(
+        "animate", "opacity",
+        ["1", "1", "0.86", "1", "0.86", "1", "1"],
+        [0, open_start, pt1, pt2, pt3, close_end, 1],
+        [LINEAR, EASE_IN_OUT, EASE_IN_OUT, EASE_IN_OUT, EASE_IN_OUT, LINEAR],
+    )
+    outer_layer = pivot(0.5, 0.5, glow + particles, outer_s)
+    rim_layer = pivot(0.5, 0.5, rim, rim_s)
+    core_layer = pivot(0.5, 0.5, f"<g>{core}{core_pulse}</g>", core_s)
+    return (
+        f'<g transform="translate({portal_x} {portal_y})" opacity="0">'
+        f'{visible([(open_start, close_end)])}{outer_layer}{rim_layer}{core_layer}</g>'
+    )
+
+
 def render(t: Theme) -> str:
     start_x, stop_x, exit_x = -45 * U, WIDTH // 2 - 15 * U, WIDTH + 10 * U
     y = TOP_MARGIN * U
+    portal_margin = 6 * U
+    entry_portal_x = portal_margin
+    exit_portal_x = WIDTH - portal_margin
+    portal_center_y = 9 * U
+
+    entry_span = stop_x - start_x
+    t_entry_clear = WALK_END * ((entry_portal_x + 3 - start_x) / entry_span)
+    entry_p = portal(
+        "entry", entry_portal_x, portal_center_y, t,
+        0.002, 0.044, round(t_entry_clear + 0.075, 4), round(t_entry_clear + 0.123, 4),
+    )
+
+    exit_span = exit_x - stop_x
+    t_exit_touch = RUN[0] + (RUN[1] - RUN[0]) * ((exit_portal_x - 66 - stop_x) / exit_span)
+    t_exit_clear = round(RUN[0] + (RUN[1] - RUN[0]) * 0.925, 4)
+    exit_p = portal(
+        "exit", exit_portal_x, portal_center_y, t,
+        round(t_exit_touch - 0.135, 4), round(t_exit_touch - 0.087, 4), t_exit_clear, 0.998,
+    )
+
     travel = on_timeline(
         "translate", "transform",
         [f"{start_x} {y}", f"{stop_x} {y}", f"{stop_x} {y}", f"{exit_x} {y}", f"{exit_x} {y}"],
@@ -336,12 +467,15 @@ def render(t: Theme) -> str:
     behind = laptop(t, [(PULL[0], PULL[1]), (STASH[1], STASH[2])])
     in_front = laptop(t, [(PULL[1], STASH[1])])
     goblin = f'{shadow(t)}{behind}{body}{legs(t)}{in_front}{typing_hands(t)}{glyphs(t)}'
+    clip_width = exit_portal_x - entry_portal_x
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" '
         f'viewBox="0 0 {WIDTH} {HEIGHT}" shape-rendering="crispEdges" role="img" '
-        f'aria-label="A pixel goblin pulls a laptop from behind its back, codes for a while, '
-        f'looks around and runs off">'
-        f'<g transform="translate({start_x} {y})">{travel}{goblin}</g></svg>'
+        f'aria-label="A pixel goblin emerges from a portal, pulls a laptop from behind its back, '
+        f'codes for a while, looks around and leaps into another portal">'
+        f'<defs><clipPath id="portal-clip"><rect x="{entry_portal_x}" y="0" width="{clip_width}" height="{HEIGHT}"/></clipPath></defs>'
+        f'<g clip-path="url(#portal-clip)"><g transform="translate({start_x} {y})">{travel}{goblin}</g></g>'
+        f'{entry_p}{exit_p}</svg>'
     )
 
 

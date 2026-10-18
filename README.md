@@ -2,12 +2,14 @@
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1200&color=D4A373&center=true&vCenter=true&width=640&lines=Hi%2C+I'm+Gonzalo+%F0%9F%91%8B;Full+Stack+Developer;Hexagonal+backends+%C2%B7+Feature-Sliced+frontends;Web+%C2%B7+Desktop+%C2%B7+Mobile+%C2%B7+Games;SOLID+by+design%2C+not+by+slogan" alt="Hi, I'm Gonzalo. Full Stack Developer." />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&height=44&pause=1200&color=D4A373&center=true&vCenter=true&width=640&lines=Hi%2C+I'm+Gonzalo+%F0%9F%91%8B;Full+Stack+Developer;Web+%C2%B7+Desktop+%C2%B7+Mobile+%C2%B7+Games;SOLID+by+design%2C+not+by+slogan" width="640" height="44" alt="Hi, I'm Gonzalo. Full Stack Developer." />
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/goblin-dark.svg" />
-  <img src="assets/goblin.svg" alt="A pixel goblin pulls out a laptop, codes for a while, looks around and runs off" />
+  <img src="assets/goblin.svg" width="560" height="60" alt="A pixel goblin emerges from a portal, pulls out a laptop, codes for a while, looks around and leaps into another portal" />
 </picture>
+
+<br/>
 
 <a href="https://mi-portafolio-gonzalo.vercel.app/"><img src="https://img.shields.io/badge/Portfolio-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Portfolio" /></a>
 <a href="https://www.linkedin.com/in/gonzalo-martinez-garcia-353507370"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
@@ -49,13 +51,15 @@ decisions:  documented         # ADRs, runbooks, diagrams
 
 ## 🚀 Projects
 
-| Project | What it is | Built with |
-|---|---|---|
-| [**Quotidia**](https://gonzaloapps.es/apps/quotidia/) | Daily planner for mobile | Flutter · Dart · Kotlin |
-| [**License Generator**](https://github.com/gonzapersonalsite/license-generator-docs) | Offline desktop app for RSA-signed software licenses | C# · .NET · Avalonia UI |
-| [**NutriManager**](https://github.com/gonzapersonalsite/nutrimanager-docs) | Desktop app for nutritionists: patients, diet plans, PDF reports | .NET 8 · Avalonia UI · SQLite |
-| [**Kanban Board**](https://github.com/gonzapersonalsite/kanban-board-app) | Trello-style board running fully in the browser | React · TypeScript · Zustand · FSD |
-| [**Pokédex**](https://github.com/gonzapersonalsite/pokedex) | PWA with infinite scroll, filters and evolution chains | React · TanStack Query · Tailwind |
+| Project | What it is | Built with | Links |
+|---|---|---|---|
+| [**Quotidia**](https://gonzaloapps.es/apps/quotidia/) | Offline-first daily planner for Android with native lock-screen alarms | Flutter · Dart · Kotlin · Pigeon · Drift | [Site](https://gonzaloapps.es/apps/quotidia/) |
+| [**License Generator**](https://github.com/gonzapersonalsite/license-generator-docs) | Offline desktop tool for issuing & verifying RSA-2048 software licenses | C# · .NET 10 · Avalonia UI · RSA-2048 | [Docs](https://github.com/gonzapersonalsite/license-generator-docs) · [Releases](https://github.com/gonzapersonalsite/license-generator-docs/releases/latest) |
+| [**Gonzalo Apps**](https://gonzaloapps.es/) | Bilingual app hub generated deterministically in Dart with zero JS & `llms.txt` twins | Dart · Cloudflare Pages · HTML/CSS | [Site](https://gonzaloapps.es/) |
+| [**Portfolio**](https://mi-portafolio-gonzalo.vercel.app/) | Bilingual Liquid Glass portfolio with build-time `llms.txt` & Markdown twins | React · TypeScript · MUI · FSD · Vitest | [Live](https://mi-portafolio-gonzalo.vercel.app/) · [Repo](https://github.com/gonzapersonalsite/portfolio) |
+| [**NutriManager**](https://github.com/gonzapersonalsite/nutrimanager-docs) | Desktop clinic suite for nutritionists: patient records, weekly diets & PDF reports | C# · .NET 8 · Avalonia UI · EF Core · SQLite | [Docs](https://github.com/gonzapersonalsite/nutrimanager-docs) |
+| [**Kanban Board**](https://github.com/gonzapersonalsite/kanban-board-app) | Multi-board planner with drag & drop, calendar view & JSON backups | React · TypeScript · Zustand · FSD | [Live](https://kanban-board-app-kappa.vercel.app/) · [Repo](https://github.com/gonzapersonalsite/kanban-board-app) |
+| [**Pokédex**](https://github.com/gonzapersonalsite/pokedex) | Installable offline-ready PWA with type filters & evolution chains | React · TanStack Query · Tailwind · Workbox | [Live](https://pokedex-pokeapi-gonzalo.vercel.app/) · [Repo](https://github.com/gonzapersonalsite/pokedex) |
 
 ## 🧰 Toolbox
 
@@ -90,8 +94,8 @@ decisions:  documented         # ADRs, runbooks, diagrams
 
 **Ahora mismo:** construyendo un juego sandbox 2D en Godot.
 
-**Proyectos:** Quotidia (planificador diario en Flutter), License Generator (licencias firmadas con RSA, .NET + Avalonia), NutriManager (gestión para nutricionistas), Kanban Board y Pokédex (React + TypeScript).
+**Proyectos:** [Quotidia](https://gonzaloapps.es/apps/quotidia/) (planificador diario offline-first en Flutter + Kotlin), [License Generator](https://github.com/gonzapersonalsite/license-generator-docs) (emisión y verificación de licencias RSA-2048 en .NET 10 + Avalonia), [Gonzalo Apps](https://gonzaloapps.es/) (escaparate bilingüe con generador estático propio en Dart y gemelos `llms.txt`), [Portafolio](https://mi-portafolio-gonzalo.vercel.app/) (React + TypeScript bajo FSD con diseño Liquid Glass), [NutriManager](https://github.com/gonzapersonalsite/nutrimanager-docs) (gestión clínica para nutricionistas en .NET 8 + Avalonia), [Kanban Board](https://kanban-board-app-kappa.vercel.app/) y [Pokédex](https://pokedex-pokeapi-gonzalo.vercel.app/).
 
-¿Hablamos? → [Portfolio](https://mi-portafolio-gonzalo.vercel.app/) · [LinkedIn](https://www.linkedin.com/in/gonzalo-martinez-garcia-353507370)
+¿Hablamos? → [Portfolio](https://mi-portafolio-gonzalo.vercel.app/) · [LinkedIn](https://www.linkedin.com/in/gonzalo-martinez-garcia-353507370) · [Gonzalo Apps](https://gonzaloapps.es/)
 
 </details>
